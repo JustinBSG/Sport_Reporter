@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.main import create_app
+from app.main import create_app
 
 
 NOW = datetime(2026, 1, 1, 12, tzinfo=timezone.utc)

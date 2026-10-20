@@ -6,11 +6,14 @@ to each server start. There is no live extraction, persistence, or notification 
 
 ## Run locally (PowerShell)
 
+From the repository root:
+
 ```powershell
+cd backend
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 $env:SPORT_REPORTER_API_KEY = "replace-with-a-long-random-token"
-.\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
 Open http://127.0.0.1:8000/docs and use **Authorize** with your token.
@@ -44,6 +47,8 @@ fixtures drop out of the time window. Clients should deduplicate polling results
 and update time because the `since` boundary is inclusive.
 
 ## Test
+
+Run from the `backend` directory:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
