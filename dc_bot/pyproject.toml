@@ -1,0 +1,13 @@
+[project]
+name = "dc-bot"
+version = "0.1.0"
+description = "Sample Discord bot for Sport Reporter notifications"
+readme = "README.md"
+authors = [
+    { name = "Justin Lau", email = "justin.lau@thebazelab.com" }
+]
+requires-python = ">=3.15"
+dependencies = [
+    "discord.py>=2.5,<3",
+    "python-dotenv>=1.0,<2",
+]

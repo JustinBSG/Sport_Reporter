@@ -1,6 +1,6 @@
 # Sport Reporter Discord bot
 
-A small Python 3.11+ Discord bot to verify connectivity and preview sports
+A small Python 3.15+ Discord bot to verify connectivity and preview sports
 notifications before connecting the backend.
 
 - `/ping` replies privately with a health check.
@@ -26,12 +26,15 @@ Run these commands from this worktree's repository root:
 
 ```powershell
 Set-Location dc_bot
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+uv sync
 Copy-Item .env.example .env
 # Edit .env and fill in your bot token and optional server ID.
-.\.venv\Scripts\python.exe bot.py
+uv run bot.py
 ```
+
+uv manages dependencies from `pyproject.toml` and `uv.lock` and creates a local
+`.venv` automatically. This project runs `bot.py` directly without building or
+installing a Python package.
 
 Environment variables take precedence over `.env`. The bot loads `.env` beside
 `bot.py`, even if started from another directory. Keep the token private; `.env`
