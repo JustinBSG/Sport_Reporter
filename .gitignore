@@ -1,1 +1,8 @@
 *_Guide.txt
+.venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+.env
+build/
+dist/
