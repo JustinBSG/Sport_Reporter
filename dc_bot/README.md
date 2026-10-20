@@ -22,9 +22,10 @@ intents are unnecessary for these slash commands.
 
 ## Run locally (PowerShell)
 
-Run these commands from this worktree's project directory:
+Run these commands from this worktree's repository root:
 
 ```powershell
+Set-Location dc_bot
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 Copy-Item .env.example .env
