@@ -4,6 +4,14 @@ A Python 3.11+ FastAPI starter for LoL and future multi-sport notification clien
 All matches are **fictional sample data**, stored in memory and recreated relative
 to each server start. There is no live extraction, persistence, or notification delivery yet.
 
+## Hosting: Oracle Cloud Infrastructure
+
+Oracle Cloud Infrastructure (OCI) Compute is the deployment target. See the
+[Oracle Cloud deployment guide](docs/oracle-cloud.md) for Ubuntu VM setup,
+networking, a systemd service, HTTPS, verification, and update procedures.
+The deployed starter still serves fictional in-memory data; PostgreSQL and
+scheduled extraction are later implementation steps.
+
 ## Run locally (PowerShell)
 
 From the repository root:
