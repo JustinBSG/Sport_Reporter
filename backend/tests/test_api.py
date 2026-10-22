@@ -10,6 +10,11 @@ NOW = datetime(2026, 1, 1, 12, tzinfo=timezone.utc)
 AUTH = {"Authorization": "Bearer test-token"}
 
 
+@pytest.fixture(autouse=True)
+def clean_environment(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("RAILWAY_ENVIRONMENT_ID", raising=False)
+
 @pytest.fixture
 def client():
     with TestClient(create_app(api_key="test-token", sample_time=NOW)) as client:
@@ -74,3 +79,25 @@ def test_key_can_be_configured_through_environment(monkeypatch):
     monkeypatch.setenv("SPORT_REPORTER_API_KEY", "from-environment")
     with TestClient(create_app(sample_time=NOW)) as client:
         assert client.get("/upcoming", headers={"Authorization": "Bearer from-environment"}).status_code == 200
+
+
+def test_railway_requires_persistent_database(monkeypatch):
+    monkeypatch.setenv("RAILWAY_ENVIRONMENT_ID", "test-environment")
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        with TestClient(create_app(api_key="test-token")):
+            pass
+
+
+def test_readiness_reports_database_failure():
+    from psycopg import OperationalError
+    from app.repository import MemoryRepository
+
+    class BrokenRepository(MemoryRepository):
+        def check(self):
+            raise OperationalError("private connection details")
+
+    with TestClient(create_app(api_key="test-token", repository=BrokenRepository([]))) as client:
+        assert client.get("/health").status_code == 200
+        response = client.get("/ready")
+        assert response.status_code == 503
+        assert "private" not in response.text
