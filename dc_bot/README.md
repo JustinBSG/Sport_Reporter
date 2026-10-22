@@ -1,5 +1,8 @@
 # Sport Reporter Discord bot
 
+Brand assets: [App icon](assets/sport-reporter-icon.png) and
+[Discord profile banner](assets/sport-reporter-banner.png).
+
 A Python 3.15+ Discord bot with four slash commands:
 
 - `/ping`: private bot connectivity check.
