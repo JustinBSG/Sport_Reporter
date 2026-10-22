@@ -23,10 +23,6 @@ In Railway's dashboard set the pre-deploy command to `python -m app.db migrate`
 (or `python -m app.db migrate --seed-demo` for the first fictional demo), healthcheck
 path `/ready`, and one replica. The Dockerfile supplies the start command.
 
-The earlier [Oracle Cloud VM guide](docs/oracle-cloud.md) remains available for
-manual VM deployments. For PostgreSQL mode, install the new dependencies, supply
-`DATABASE_URL`, and run migrations before starting the service.
-
 ## Run locally (PowerShell)
 
 From this directory, with [uv](https://docs.astral.sh/uv/) installed:

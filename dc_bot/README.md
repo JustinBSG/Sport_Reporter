@@ -64,10 +64,6 @@ Environment variables take precedence over `.env`. The bot loads `.env` beside
 `bot.py`; never commit it. Stop any Railway or VM process using the same token
 before running locally, or use a different development bot token.
 
-The earlier Oracle Cloud hosting choice is superseded by the Railway tutorial
-for this setup. Existing VM deployments must be stopped before moving the same
-bot token to Railway.
-
 ## Tests
 
 ```powershell
