@@ -1,80 +1,127 @@
 # Sport Reporter backend
 
-FastAPI read API for sports matches, backed by PostgreSQL when `DATABASE_URL` is
-set. With no database URL, local development uses fictional in-memory fixtures.
-On Railway the database URL is mandatory, preventing accidental volatile storage.
-Demo matches always have `is_demo=true`; no live sports extractor is included yet.
+The backend uses FastAPI to provide read access to sports matches. It uses
+PostgreSQL when you set `DATABASE_URL`. Without this variable, local development
+uses fictional demo matches in memory. Railway requires `DATABASE_URL` to prevent
+the use of temporary storage.
+
+Demo records have `is_demo=true`. The backend does not collect live sports data.
 
 ## Deploy to Railway
 
-Follow the [complete Railway tutorial](../docs/railway-setup.md). Deploy this
-folder as the `backend` service, with root directory `/backend` and its Dockerfile.
-The image uses Python 3.13 and installs dependencies from `uv.lock`.
+Use the [Railway setup guide](../docs/railway-setup.md) for the complete procedure.
 
-Required variables:
+1. Create a service named `backend` from this repository.
+2. Set its root directory to `/backend`.
+3. Use the Dockerfile in this directory.
+4. Add these environment variables:
 
-```dotenv
-DATABASE_URL=${{Postgres.DATABASE_URL}}
-SPORT_REPORTER_API_KEY=your-random-secret
-PORT=8000
-```
+   ```dotenv
+   DATABASE_URL=${{Postgres.DATABASE_URL}}
+   SPORT_REPORTER_API_KEY=your-random-secret
+   PORT=8000
+   ```
 
-In Railway's dashboard set the pre-deploy command to `python -m app.db migrate`
-(or `python -m app.db migrate --seed-demo` for the first fictional demo), healthcheck
-path `/ready`, and one replica. The Dockerfile supplies the start command.
+5. Set the pre-deploy command to `python -m app.db migrate`.
+6. For the first demo deployment, use `python -m app.db migrate --seed-demo` instead.
+7. Set the healthcheck path to `/ready`.
+8. Set the replica count to `1`.
 
-## Run locally (PowerShell)
+The Dockerfile supplies the start command. Its image uses Python 3.13 and the
+dependencies in `uv.lock`.
 
-From this directory, with [uv](https://docs.astral.sh/uv/) installed:
+## Run locally with PowerShell
 
-```powershell
-uv sync --locked --extra dev --python 3.13
-$env:SPORT_REPORTER_API_KEY = 'local-test-key-change-before-hosting'
-# Optional: leave DATABASE_URL unset for local in-memory sample mode.
-$env:DATABASE_URL = 'postgresql://sport:local-dev-only@127.0.0.1:5432/sport_reporter'
-uv run --python 3.13 python -m app.db migrate --seed-demo
-uv run --python 3.13 python -m uvicorn app.main:app --reload
-```
+Install [uv](https://docs.astral.sh/uv/) before you start.
 
-For memory-only mode, omit the database variable and migration command.
-The backend reads process environment variables; it does not load `.env` itself.
-Open `http://127.0.0.1:8000/docs`, select **Authorize**, and enter your bearer key.
+1. Open PowerShell in the `backend` directory.
+2. Install the dependencies:
 
-## API
+   ```powershell
+   uv sync --locked --extra dev --python 3.13
+   ```
 
-| Route | Behavior |
+3. Set an API key for local tests:
+
+   ```powershell
+   $env:SPORT_REPORTER_API_KEY = 'local-test-key-change-before-hosting'
+   ```
+
+4. If you use local PostgreSQL, set its connection string:
+
+   ```powershell
+   $env:DATABASE_URL = 'postgresql://sport:local-dev-only@127.0.0.1:5432/sport_reporter'
+   ```
+
+5. If you use PostgreSQL, prepare the database with demo records:
+
+   ```powershell
+   uv run --python 3.13 python -m app.db migrate --seed-demo
+   ```
+
+6. Start the API:
+
+   ```powershell
+   uv run --python 3.13 python -m uvicorn app.main:app --reload
+   ```
+
+For memory mode, leave `DATABASE_URL` unset and omit steps 4 and 5. The backend
+reads process environment variables. It does not load `.env`.
+
+7. Open `http://127.0.0.1:8000/docs`.
+8. Select **Authorize**.
+9. Enter your API key in the bearer field.
+
+## API reference
+
+| Route | Result |
 | --- | --- |
-| `GET /health` | Public liveness and storage source (`sample` or `postgresql`) |
-| `GET /ready` | Public readiness, including a database schema query |
-| `GET /upcoming?hours=24&leagues=lck,nba` | Unstarted matches in the next 1–168 hours |
-| `GET /results?since=<ISO timestamp>&leagues=worlds` | Completed matches updated at or after `since` |
-| `GET /matches/{id}` | One match, or HTTP 404 |
+| `GET /health` | Public response with API status and storage source: `sample` or `postgresql` |
+| `GET /ready` | Public response after a database schema check |
+| `GET /upcoming?hours=24&leagues=lck,nba` | Matches with status `unstarted` in the next `hours` hours; allowed range: 1 to 168 |
+| `GET /results?since=<ISO timestamp>&leagues=worlds` | Completed matches with an update time at or after `since` |
+| `GET /matches/{id}` | One match, or HTTP 404 if the match does not exist |
 
-Match endpoints require `Authorization: Bearer <SPORT_REPORTER_API_KEY>`.
-League filters are optional, comma separated, and case insensitive. Times include
-UTC offsets; `since` must be timezone aware. PostgreSQL list queries return at
-most 100 rows, ordered by start/update time and ID. Pagination is not implemented.
-Clients polling results should deduplicate by ID and update time because the
-`since` boundary is inclusive. The bot currently queries on demand, without polling.
+Match routes require the header `Authorization: Bearer <SPORT_REPORTER_API_KEY>`.
 
-## Database lifecycle
+League filters are optional. Separate league names with commas. Filters are not
+case sensitive. Timestamps must include a UTC offset. This also applies to
+`since`.
 
-- `python -m app.db migrate`: apply new SQL files from `app/migrations` once.
-- `python -m app.db migrate --seed-demo`: also insert missing fictional examples.
-- `python -m app.db seed-demo --refresh`: deliberately move only the known demo
-  records' timestamps to the current demonstration window.
+PostgreSQL list queries return a maximum of 100 records. Upcoming matches use
+start time and ID for their order. Results use update time and ID. The API does
+not support pagination.
 
-`DATABASE_URL` is required for these commands. Production startup does not seed
-or reset records. A separate migration ledger and transaction advisory lock
-protect repeat/concurrent migrations. Add new numbered SQL files for changes;
-do not edit applied migrations. Enable Railway backups separately.
+For repeated result queries, use the match ID and update time to remove
+duplicates. The `since` boundary includes records with that exact update time.
+The current bot queries only when a user sends a command.
 
-## Tests
+## Manage the database
+
+These commands require `DATABASE_URL`:
+
+| Command | Action |
+| --- | --- |
+| `python -m app.db migrate` | Apply each new SQL file from `app/migrations` once |
+| `python -m app.db migrate --seed-demo` | Apply migrations and insert missing fictional demo records |
+| `python -m app.db seed-demo --refresh` | Move timestamps for known demo records to the current demo period |
+
+Normal application startup does not insert or reset records. A migration ledger
+records each applied file. A database advisory lock prevents concurrent migration
+runs from applying the same file. Each migration run uses a transaction.
+
+Add a new numbered SQL file for each schema change. Do not change a migration
+that the database has already applied. Enable Railway backups separately.
+
+## Run tests
+
+Run this command from the `backend` directory:
 
 ```powershell
 uv run --python 3.13 pytest -q
 ```
 
-Set `TEST_DATABASE_URL` to a disposable local PostgreSQL connection string to run
-real database integration tests too. They create and remove a unique temporary
-schema. Without it, those checks are skipped. API-only tests use memory fixtures.
+API tests use demo records in memory. To run PostgreSQL integration tests, set
+`TEST_DATABASE_URL` to a disposable local database connection string. These tests
+create a unique temporary schema and remove it afterward. Without this variable,
+the PostgreSQL tests do not run.

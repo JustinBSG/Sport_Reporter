@@ -1,4 +1,41 @@
-Mode: Built-in image_gen; new generation; opaque background.
+Mode: Built-in image_gen.
+Operation: Generate a new image.
+Background: Opaque.
+Use case: logo-brand.
 
-Final prompt:
-Use case: logo-brand. Create one finished square app icon for Sport Reporter, a Discord bot that reports League of Legends esports and other sports match schedules and results. Subject: an original friendly robot sports reporter mascot, shown as one bold centered head-and-headset emblem, with an expressive simple digital visor and a subtle sports-broadcast / scoreboard character to the design. Style: premium modern graphic illustration, vector-like crisp edges rendered as a polished bitmap; strong memorable silhouette, thick clean shapes, very few details, energetic but approachable. Composition: single icon, straight-on view, large centered emblem occupying about 70 percent of the square so the whole face and headset survive Discord's circular avatar crop; generous clean breathing room on all sides. Use a cohesive limited high-contrast color treatment with a solid dark background and clearly separated bright foreground shapes. It must read clearly at 32 by 32 pixels. No written text, no letters, no numbers, no team logos, no Discord logo, no watermarks, no photorealism, no multiple options, no app screenshot, no device mockup, no outer rounded-square frame. Output the actual square icon artwork, ideally 1024 by 1024 pixels.
+Prompt:
+Create one finished square app icon for Sport Reporter. Sport Reporter is a
+Discord bot for League of Legends and other sports schedules and results.
+
+Subject
+-------
+Create an original, friendly robot sports reporter mascot. Show one centered
+head with a broadcast headset. Give the robot a simple, expressive digital visor.
+Use subtle sports broadcast or scoreboard details.
+
+Style
+-----
+Use a polished modern graphic illustration with crisp edges like vector artwork.
+Render the result as a bitmap. Use a strong silhouette, thick shapes, and few
+details. Make the character energetic and approachable.
+
+Composition
+-----------
+Show the mascot from the front. Make the emblem occupy approximately 70 percent
+of the square. Keep the face and headset inside Discord's circular avatar crop.
+Leave clear space on all sides. Make the icon readable at 32 by 32 pixels.
+
+Color
+-----
+Use a small set of colors with strong contrast. Use a solid dark background.
+Keep bright foreground shapes clearly separate from the background.
+
+Exclusions
+----------
+Do not include text, letters, or numbers. Do not include team logos, the Discord
+logo, or watermarks. Do not use photorealism. Do not show multiple options, an app
+screenshot, or a device mockup. Do not add an outer frame with rounded corners.
+
+Output
+------
+Return the square icon artwork. Use 1024 by 1024 pixels if available.

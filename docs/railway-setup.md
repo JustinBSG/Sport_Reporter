@@ -1,14 +1,15 @@
-# Sport Reporter: Railway setup from repository to Discord
+# Sport Reporter: Railway setup guide
 
-Last checked against Railway documentation: **23 October 2026**.
+Guide date: **October 23, 2026**.
 
-This walkthrough deploys the code in this repository. It creates a persistent
-PostgreSQL database, a FastAPI service, and one continuously running Discord bot.
-The initial matches are **fictional demo fixtures**, clearly labelled in the API
-and Discord. Live sports extraction and automatic scheduled notifications are
-future features, not supplied by hosting the starter.
+This guide deploys the code in this repository. The deployment has a persistent
+PostgreSQL database, a FastAPI backend, and one Discord bot that runs continuously.
 
-## 1. Understand what you are deploying
+The initial matches are fictional demo data. The API and Discord replies identify
+these records as demo data. The application does not collect live sports data or
+send scheduled notifications. These features require more development.
+
+## 1. Identify the services
 
 ```text
 Discord users
@@ -23,192 +24,210 @@ backend :8000
 Postgres + persistent volume
 ```
 
-| Service | Source | Public address needed? | Credentials |
+| Service | Source | Public address | Credentials |
 | --- | --- | --- | --- |
-| `Postgres` | Railway PostgreSQL database | No | Railway creates database credentials |
-| `backend` | This repo, root `/backend` | Optional HTTPS address for browser/API testing | `DATABASE_URL`, `SPORT_REPORTER_API_KEY` |
-| `discord-bot` | This repo, root `/dc_bot` | No | `DISCORD_TOKEN`, `SPORT_REPORTER_API_KEY`, `BACKEND_URL` |
+| `Postgres` | Railway PostgreSQL database | Not required | Railway creates database credentials |
+| `backend` | Repository root directory `/backend` | Optional HTTPS address for external tests | `DATABASE_URL`, `SPORT_REPORTER_API_KEY` |
+| `discord-bot` | Repository root directory `/dc_bot` | Not required | `DISCORD_TOKEN`, `SPORT_REPORTER_API_KEY`, `BACKEND_URL` |
 
-The bot connects outbound to Discord. It does not need a web server, public port,
-Interactions Endpoint URL, or direct database access. Keep all three services in
-the **same Railway project and environment**. Singapore is a reasonable initial
-region for a Hong Kong-based project; measure latency if needed.
+The bot makes an outbound connection to Discord. It does not need a web server,
+public port, Interactions Endpoint URL, or database credentials.
 
-## 2. Check Railway availability and billing
+Keep all three services in the same Railway project, environment, and region.
+For a project in Hong Kong, Singapore is an initial region option. Measure latency
+if you need to compare regions.
 
-Open [Railway status](https://status.railway.com/) before starting. At the time
-this guide was prepared, Railway was recovering from its 21 October 2026 security
-incident and the latest retrieved update still restricted Hobby builds. If your
-plan cannot deploy, prepare the repository and continue after builds resume.
-For an existing affected account, follow Railway's
-[security disclosure](https://blog.railway.com/p/security-disclosure-wednesday-october-21st)
-and credential rotation guidance before reusing its secrets.
+## 2. Check Railway status and billing
 
-Create/sign in to a [Railway account](https://railway.com/), connect GitHub, and
-choose the plan appropriate for continuously running services. Hobby has a $5
-minimum monthly usage commitment, which includes $5 usage; it does **not** mean
-three continuously running services are guaranteed to cost $5. Set usage alerts
-and review CPU, memory, storage, and egress after the first day/week. A hard usage
-limit can stop services, so choose its value with that consequence in mind.
-See [pricing](https://railway.com/pricing).
+1. Open [Railway status](https://status.railway.com/).
+2. Check for incidents or deployment restrictions that affect your plan.
+3. If deployments are unavailable, prepare the repository until service resumes.
+4. If an incident affects your account, obey Railway's instructions to replace credentials.
 
-## 3. Know the code and deployment files
+See Railway's [security disclosure](https://blog.railway.com/p/security-disclosure-wednesday-october-21st)
+for its October 21, 2026 incident guidance.
+
+5. Create an account or sign in to [Railway](https://railway.com/).
+6. Connect your GitHub account.
+7. Select a plan for services that run continuously.
+8. Set usage alerts.
+9. Review CPU, memory, storage, and network charges after the first day and week.
+
+The Hobby plan has a $5 monthly minimum, which includes $5 of resource usage.
+Usage above this amount costs extra. Three services can cost more than $5 per
+month. A hard usage limit can stop services. See [Railway pricing](https://railway.com/pricing)
+for current prices.
+
+## 3. Identify the deployment files
 
 | File | Purpose |
 | --- | --- |
-| `backend/app/main.py` | Authenticated API routes and startup/readiness checks |
-| `backend/app/models.py` | Match/team models and fictional fixtures |
-| `backend/app/repository.py` | PostgreSQL connection pool and parameterized queries |
-| `backend/app/db.py` | Versioned migrations and explicit demo seeding commands |
-| `backend/app/migrations/001_matches.sql` | Tables, constraints, and indexes |
-| `backend/Dockerfile` | Backend image, Python 3.13, locked Python dependencies |
-| `dc_bot/bot.py` | Discord slash commands and embeds |
-| `dc_bot/backend_client.py` | Async HTTP client with bearer authentication and timeouts |
-| `dc_bot/Dockerfile` | Bot image, retaining this project's Python 3.15 requirement |
-| Each service's `uv.lock` | Exact dependency resolution used by its Docker build |
+| `backend/app/main.py` | API routes, authentication, startup, and readiness checks |
+| `backend/app/models.py` | Match models, team models, and fictional demo records |
+| `backend/app/repository.py` | PostgreSQL connection pool and queries with bound parameters |
+| `backend/app/db.py` | Migration commands and demo data commands |
+| `backend/app/migrations/001_matches.sql` | Database tables, constraints, and indexes |
+| `backend/Dockerfile` | Backend image with Python 3.13 and locked dependencies |
+| `dc_bot/bot.py` | Discord slash commands and match embeds |
+| `dc_bot/backend_client.py` | Asynchronous HTTP client with bearer authentication and timeouts |
+| `dc_bot/Dockerfile` | Bot image with Python 3.15 |
+| Each service's `uv.lock` | Exact dependency versions for its Docker build |
 
-The backend runs the equivalent of:
+The backend runs the equivalent of this command:
 
 ```sh
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Its Docker command also accepts Railway's `PORT`. The bot runs `python bot.py`.
-Do not copy Windows `.venv` directories to Railway; Docker builds Linux ones.
+The Docker start command also accepts Railway's `PORT` variable. The bot runs
+`python bot.py`. Docker creates Linux virtual environments during the build.
+Do not copy Windows `.venv` directories to Railway.
 
-This tutorial uses **dashboard settings**, rather than `railway.toml`.
-Railway currently deprecates Config as Code for new services; its replacement
-is project-level Infrastructure as Code. See
-[current configuration guidance](https://docs.railway.com/config-as-code).
+This guide uses Railway dashboard settings. Railway has deprecated Config as
+Code for new services. Its replacement is project-level Infrastructure as Code.
+See the [configuration guidance](https://docs.railway.com/config-as-code).
 
-## 4. Put this code on GitHub
+## 4. Prepare the GitHub branch
 
-Commit the application changes, Dockerfiles, SQL migration, and lockfiles to the
-branch you want Railway to deploy. Both application directories must be present
-on that **same branch**. An older bot-only or backend-only branch will not contain
-the complete setup.
+Both application directories must be on the branch that Railway deploys. This
+branch must also contain the Dockerfiles, SQL migration, and lockfiles.
 
-From PowerShell in the repository root:
+1. Open PowerShell in the repository root.
+2. Check the working tree:
 
-```powershell
-git status --short
-git branch --show-current
-git diff
-```
+   ```powershell
+   git status --short
+   git branch --show-current
+   git diff
+   ```
 
-Review and commit the files you intend to deploy, then push your chosen branch.
+3. Review the files that you intend to deploy.
+4. Commit these files to the deployment branch.
+5. Push the branch to GitHub.
+
 Never commit `.env`, Discord tokens, API keys, or database URLs. `.gitignore` and
 both `.dockerignore` files exclude local credentials and virtual environments.
 
-## 5. Create the Discord application and install the bot
+## 5. Create the Discord application
 
 1. Open the [Discord Developer Portal](https://discord.com/developers/applications).
-2. Choose **New Application**, name it `Sport Reporter`, and open **Bot**.
-3. Create/reset the bot token if required. Save it in your password manager;
-   later it becomes the bot service's `DISCORD_TOKEN`. This is the **bot token**,
-   not the application ID, public key, or OAuth client secret.
-4. Leave privileged Message Content, Members, and Presence intents off. These
-   commands use default intents.
-5. Under **OAuth2 / URL Generator**, select scopes `bot` and
-   `applications.commands`. Grant **View Channels**, **Send Messages**, and
-   **Embed Links**. Open the generated URL and install it in a server you manage.
-6. Enable Developer Mode in Discord's user settings. Right-click your test
-   server and copy its ID. Use it as `DISCORD_GUILD_ID` for fast test registration.
-7. Leave the Discord **Interactions Endpoint URL** blank: this bot receives
-   commands through its Discord Gateway connection.
+2. Select **New Application**.
+3. Name the application `Sport Reporter`.
+4. Open **Bot**.
+5. If necessary, create or reset the bot token.
+6. Save the token in your password manager.
 
-Stop any local/VM copy using the same token before starting the Railway bot.
-Use one bot replica during this tutorial.
+The bot service uses this token as `DISCORD_TOKEN`. The application ID, public
+key, and OAuth client secret cannot replace the bot token.
+
+7. Leave the privileged Message Content, Members, and Presence intents disabled.
+8. Open **OAuth2 / URL Generator**.
+9. Select the scopes `bot` and `applications.commands`.
+10. Grant **View Channels**, **Send Messages**, and **Embed Links**.
+11. Open the generated installation URL.
+12. Install the bot in a server that you manage.
+13. Enable Developer Mode in Discord's user settings.
+14. Copy your test server ID from the server's context menu.
+15. Use this ID as `DISCORD_GUILD_ID` for test command registration.
+16. Leave **Interactions Endpoint URL** blank.
+17. Stop local or VM bot processes that use the same token.
+
+The bot receives commands through its Discord Gateway connection. Use one bot
+replica for this guide.
 
 ## 6. Create the Railway project and database
 
-1. Create a new **empty project** named `Sport Reporter`.
-2. Use one environment, for example the default `production`, throughout.
-3. Click **+ New → Database → PostgreSQL**. Name the service **`Postgres`**
-   exactly, so the reference expressions below match.
-4. Select Singapore for its region when available. Later choose the same region
-   for both application services.
-5. Wait until PostgreSQL is running. Verify it has its persistent database volume.
-   Use the database template's volume configuration; do not attach a volume to
-   the backend or bot to store the database.
-6. Open the database's **Variables** view. Railway provides `DATABASE_URL`,
-   `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, and `PGDATABASE`.
-7. Keep the database private. Do not enable a public TCP proxy for this setup.
+1. Create an empty Railway project named `Sport Reporter`.
+2. Select one environment, such as the default `production`.
+3. Select **+ New > Database > PostgreSQL**.
+4. Name the database service `Postgres`.
+5. If available, select the Singapore region.
+6. Wait until PostgreSQL is running.
+7. Make sure that the database service has a persistent volume.
+8. Use the database template's volume configuration.
+9. Open the database's **Variables** view.
+10. Keep the database private.
+11. Leave the public TCP proxy disabled.
 
-The database and the tables are separate: Railway creates PostgreSQL; our
-migration creates the application tables in the next steps. Railway's current
-[PostgreSQL documentation](https://docs.railway.com/databases/postgresql)
-describes private-by-default databases and connection variables.
+The name `Postgres` must match the variable references in this guide. Both
+application services must use the same environment and region as the database.
+Do not attach a database storage volume to the backend or bot.
 
-## 7. Create and configure the backend service
+Railway supplies `DATABASE_URL`, `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, and
+`PGDATABASE`. Railway creates the database service. The application migration
+creates its tables later. See the [PostgreSQL documentation](https://docs.railway.com/databases/postgresql).
 
-1. Choose **+ New → GitHub Repo** and select this repository. Authorize its access
-   if GitHub asks. Rename the service **`backend`**.
-2. Select the branch containing both application directories and the new files.
-3. In **Settings → Source**, set **Root Directory** to `/backend`.
-4. Railway should detect the `Dockerfile` in that source directory. Select the
-   Dockerfile builder if needed. Leave custom Build Command and Start Command
-   empty, allowing the Dockerfile to supply them.
-5. Choose the same region as PostgreSQL.
-6. Set these deployment settings:
+## 7. Configure the backend service
+
+1. Select **+ New > GitHub Repo**.
+2. Select this repository.
+3. If GitHub requests access permission, authorize repository access.
+4. Rename the service `backend`.
+5. Select the branch with both application directories and deployment files.
+6. Open **Settings > Source**.
+7. Set **Root Directory** to `/backend`.
+8. If necessary, select the Dockerfile builder.
+9. Leave custom **Build Command** and **Start Command** empty.
+10. Select the database's region.
+11. Apply these deployment settings:
 
 | Backend setting | Value |
 | --- | --- |
 | Root Directory | `/backend` |
-| Builder | Dockerfile, detected from `backend/Dockerfile` |
-| Pre-deploy Command, initial demo | `python -m app.db migrate --seed-demo` |
+| Builder | Dockerfile from `backend/Dockerfile` |
+| Pre-deploy Command for the first demo | `python -m app.db migrate --seed-demo` |
 | Healthcheck Path | `/ready` |
 | Healthcheck Timeout | `120` seconds |
 | Replicas | `1` |
-| Restart Policy | On Failure; up to 10 retries if that setting is shown |
-| Serverless / App Sleeping | Disabled for this walkthrough |
+| Restart Policy | On Failure; maximum 10 retries if available |
+| Serverless / App Sleeping | Disabled |
 | Watch Paths, optional | `/backend/**` |
 
-If Railway started an initial deployment before you finished configuration, let
-it fail or cancel it; configure the root directory and variables, then redeploy.
-Do not treat that initial missing-configuration failure as an application bug.
+Railway uses the `backend` directory as the Docker build context. The Dockerfile
+supplies the build and start commands. See [Railway monorepos](https://docs.railway.com/deployments/monorepo).
 
-Root directories are important: backend builds use the `backend` directory as
-their Docker build context. See
-[Railway monorepos](https://docs.railway.com/deployments/monorepo).
+An initial deployment can start before configuration is complete. If this occurs,
+cancel the deployment or let it fail. Complete the settings and variables before
+you deploy again. This initial failure can result from missing configuration.
 
-## 8. Set backend environment variables
+## 8. Set backend variables
 
-Open `backend → Variables` and add:
+1. Open **backend > Variables**.
+2. Add these variables:
 
-```dotenv
-DATABASE_URL=${{Postgres.DATABASE_URL}}
-SPORT_REPORTER_API_KEY=PASTE_A_NEW_RANDOM_SECRET_HERE
-PORT=8000
-```
+   ```dotenv
+   DATABASE_URL=${{Postgres.DATABASE_URL}}
+   SPORT_REPORTER_API_KEY=PASTE_A_NEW_RANDOM_SECRET_HERE
+   PORT=8000
+   ```
 
-The `${{...}}` expression is entered literally in Railway, without extra quotes.
-It references the `Postgres` service; do not paste it into a local `.env` expecting
-your computer to resolve it. Use Railway's reference-variable picker if the
-database service has a different name.
+Enter `${{...}}` references exactly as shown, without extra quotes. Railway
+resolves these references. A local `.env` file does not resolve them. If the
+database service has another name, use Railway's reference-variable selector.
 
-Generate an API key **locally**, then paste it into Railway. For example, after
-installing Python:
+3. Generate an API key on your computer:
 
-```powershell
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
+   ```powershell
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
 
-Use your actual Python launcher if it differs. Save the key securely; the bot
-will use exactly the same value. Do not put the key in a URL or Git commit.
+4. If your Python launcher differs, use that launcher.
+5. Replace `PASTE_A_NEW_RANDOM_SECRET_HERE` with the generated key.
+6. Save the key in secure storage.
+7. Make sure that `DATABASE_URL` resolves to the database's private hostname.
 
-`DATABASE_URL` should resolve to the database's private hostname. The bot will
-not receive this variable. See
-[Railway variable references](https://docs.railway.com/variables).
+The bot must use the same API key. Do not put the key in a URL or Git commit.
+Do not give `DATABASE_URL` to the bot. See [variable references](https://docs.railway.com/variables).
 
-## 9. Deploy, migrate, and seed PostgreSQL
+## 9. Deploy the backend and create demo records
 
-Apply the pending configuration changes and deploy `backend`.
+1. Apply the pending backend configuration changes.
+2. Deploy `backend`.
+3. Check the deployment logs.
 
-The pre-deploy command runs inside Railway with its variables and private
-network access. It applies SQL migrations before the API starts; if it fails,
-the deployment stops. See
-[pre-deploy commands](https://docs.railway.com/deployments/pre-deploy-command).
+The pre-deploy command uses Railway's environment variables and private network.
+It applies SQL migrations before the API starts. A command failure stops the
+deployment. See [pre-deploy commands](https://docs.railway.com/deployments/pre-deploy-command).
 
 Expected log messages include:
 
@@ -219,66 +238,73 @@ Fictional demo rows seeded. Existing rows kept unless --refresh was requested.
 Application startup complete.
 ```
 
-The migration installs:
+The migration creates these tables:
 
 | Table | Contents |
 | --- | --- |
-| `schema_migrations` | Applied SQL filenames, preventing repeat application |
-| `matches` | Match ID, sport, league, UTC times, status, teams, scores, format, stage, demo flag |
+| `schema_migrations` | Names of applied SQL files |
+| `matches` | ID, sport, league, UTC times, status, teams, scores, format, stage, and demo flag |
 
-Times use PostgreSQL `TIMESTAMPTZ`. Teams use JSONB objects such as
+Timestamps use PostgreSQL `TIMESTAMPTZ`. Teams use JSONB objects, such as
 `{"name":"Sample Tigers","code":"TIG","score":null}`. Match IDs are primary
-keys; indexed columns support upcoming/results queries. SQL parameters are bound
-separately from values, including match IDs and league filters.
+keys. Indexes support queries for upcoming matches and results. Queries bind
+parameter values separately from SQL, including match IDs and league filters.
 
-Seeding inserts two future fictional matches and one fictional result. It is
-safe to repeat: existing IDs are kept. Ordinary restarts and redeployments do
-not recreate their times or erase data. Migrations run transactionally with a
-database advisory lock so overlapping deploys cannot apply the same migration.
+The demo command inserts two future matches and one result. All three matches
+are fictional. Repeated runs keep existing IDs. Normal restarts and deployments
+do not reset timestamps or erase records.
 
-Open `Postgres → Data` and inspect `matches`; there should be **3 rows**, each
-with `is_demo=true`. Open `schema_migrations`; there should be one entry for
-`001_matches.sql`.
+Each migration run uses a transaction and a database advisory lock. The lock
+prevents concurrent deployments from applying the same migration.
 
-Once the demo works, change the pre-deploy command to:
+4. Open **Postgres > Data**.
+5. Inspect `matches` for three records with `is_demo=true`.
+6. Inspect `schema_migrations` for one entry named `001_matches.sql`.
+7. After the demo works, change the pre-deploy command to:
 
-```sh
-python -m app.db migrate
-```
+   ```sh
+   python -m app.db migrate
+   ```
 
-Existing demo rows stay in PostgreSQL. Removing the seeding flag does not delete
-them. Before using real data, deliberately remove/replace demo records and add
-your real sports extractor; never relabel the fictional rows as real fixtures.
+This change leaves the demo records in PostgreSQL. Before you use real data,
+remove or replace the demo records. Add a sports data extractor to collect real
+matches. Never change fictional records to identify them as real matches.
 
-## 10. Verify the backend over HTTPS
+## 10. Check the backend over HTTPS
 
-For convenient external testing, open `backend → Settings → Networking` and
-choose **Generate Domain**, target port **8000**. Railway provides an HTTPS URL.
-Public access is optional for normal bot operation; the bot will use private HTTP.
+A public domain is optional. The bot uses Railway's private network for normal
+operation.
 
-Open `https://YOUR-BACKEND-DOMAIN/ready` in a browser. Expect:
+1. For external tests, open **backend > Settings > Networking**.
+2. Select **Generate Domain**.
+3. Set the target port to `8000`.
+4. Open `https://YOUR-BACKEND-DOMAIN/ready` in a browser.
+
+Expected response:
 
 ```json
 {"status":"ready","data_source":"postgresql"}
 ```
 
 `/health` confirms that the API is running. `/ready` also queries the database
-schema and returns HTTP 503 if it cannot be reached. Railway's deployment
-healthcheck is a startup gate, not ongoing uptime monitoring.
-See [healthchecks](https://docs.railway.com/deployments/healthchecks).
+schema. It returns HTTP 503 if the database check fails. Railway checks readiness
+before it activates a deployment. It does not continue to monitor the endpoint
+after deployment. See [healthchecks](https://docs.railway.com/deployments/healthchecks).
 
-Open `https://YOUR-BACKEND-DOMAIN/docs`. Select **Authorize**, enter only your API
-key into the bearer field, then try:
+5. Open `https://YOUR-BACKEND-DOMAIN/docs`.
+6. Select **Authorize**.
+7. Enter only the API key in the bearer field.
+8. Send these test requests:
 
 | Request | Expected result |
 | --- | --- |
-| `GET /upcoming?hours=24` | Two fictional upcoming matches, soon after first seeding |
+| `GET /upcoming?hours=24` | Two fictional upcoming matches soon after the first demo insertion |
 | `GET /upcoming?leagues=lck` | One fictional LoL match |
-| `GET /matches/lol-sample-result` | Fictional completed match with score 3–1 |
-| `GET /results?since=2026-01-01T00:00:00Z` | Demo result seeded after that timestamp |
-| A match endpoint without the key | HTTP 401 |
+| `GET /matches/lol-sample-result` | A fictional completed match with a 3-1 score |
+| `GET /results?since=2026-01-01T00:00:00Z` | The demo result, if its update time is after this timestamp |
+| A match route without the API key | HTTP 401 |
 
-Equivalent PowerShell, replacing the URL and key locally:
+To check the same routes from PowerShell, replace the URL and key in this example:
 
 ```powershell
 $apiBase = 'https://YOUR-BACKEND-DOMAIN'
@@ -290,91 +316,99 @@ $since = [Uri]::EscapeDataString([DateTimeOffset]::UtcNow.AddHours(-24).ToString
 Invoke-RestMethod "$apiBase/results?since=$since" -Headers $apiHeaders
 ```
 
-The API returns at most 100 rows per upcoming/results request. There is no
-pagination yet; add it before building an extractor/client that needs every row
-from larger windows.
+PostgreSQL list queries return a maximum of 100 records. The API does not support
+pagination. Add pagination before a client requires all records from a larger
+query period.
 
-## 11. Create and configure the Discord bot service
+## 11. Configure the Discord bot service
 
-1. In the **same project and environment**, add the **same GitHub repository**
-   again as a second service. This is a second deployment, not a second repo.
-2. Rename it **`discord-bot`** and choose the same branch.
-3. Set **Root Directory** to `/dc_bot`.
-4. Let Railway detect `dc_bot/Dockerfile`. Leave custom build/start commands empty.
-5. Choose the same region as the backend and database.
-6. Use these settings:
+1. Add the same GitHub repository as a second service in the same Railway project and environment.
+2. Rename the service `discord-bot`.
+3. Select the backend's deployment branch.
+4. Set **Root Directory** to `/dc_bot`.
+5. Use the Dockerfile from `dc_bot/Dockerfile`.
+6. Leave custom build and start commands empty.
+7. Select the backend's region.
+8. Apply these settings:
 
 | Bot setting | Value |
 | --- | --- |
 | Root Directory | `/dc_bot` |
 | Builder | Dockerfile |
-| Start Command | Leave empty; Docker runs `python bot.py` |
+| Start Command | Empty; Docker runs `python bot.py` |
 | Pre-deploy Command | Empty |
-| HTTP Healthcheck | Empty; this worker has no HTTP listener |
+| HTTP Healthcheck | Empty; the bot has no HTTP listener |
 | Replicas | `1` |
-| Restart Policy | On Failure; up to 10 retries if available |
+| Restart Policy | On Failure; maximum 10 retries if available |
 | Serverless / App Sleeping | Disabled |
 | Public domain | None |
 | Watch Paths, optional | `/dc_bot/**` |
 
-Do not configure a cron schedule: a Discord Gateway bot must keep running.
-One replica avoids handling the same interactions in multiple independent bot
-processes. Brief deployment overlap is still possible; do not run a second
-local or VM copy using this token.
+This creates a second deployment of the repository. It does not require another
+repository. A Discord Gateway bot must run continuously. Do not set a cron
+schedule for this service.
+
+One replica prevents multiple independent bot processes from handling the same
+interaction. Old and new processes can briefly overlap during deployment. Do
+not run a local or VM bot process with the same token.
 
 ## 12. Set bot variables and deploy
 
-Open `discord-bot → Variables`:
+1. Open **discord-bot > Variables**.
+2. Add these variables:
 
-```dotenv
-DISCORD_TOKEN=PASTE_THE_DISCORD_BOT_TOKEN
-DISCORD_GUILD_ID=PASTE_YOUR_TEST_SERVER_ID
-SPORT_REPORTER_API_KEY=${{backend.SPORT_REPORTER_API_KEY}}
-BACKEND_URL=http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:8000
-```
+   ```dotenv
+   DISCORD_TOKEN=PASTE_THE_DISCORD_BOT_TOKEN
+   DISCORD_GUILD_ID=PASTE_YOUR_TEST_SERVER_ID
+   SPORT_REPORTER_API_KEY=${{backend.SPORT_REPORTER_API_KEY}}
+   BACKEND_URL=http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:8000
+   ```
 
-Use the literal reference expressions, without extra quotes. `backend` must match
-the actual service name. `BACKEND_URL` is the **API origin**, with its port and no
-`/docs` or `/upcoming` suffix. Internal HTTP stays inside Railway's private network;
-use HTTPS for external access. See
-[private networking practices](https://docs.railway.com/overview/best-practices).
+Enter the references exactly as shown, without extra quotes. `backend` must
+match the API service name. `BACKEND_URL` is the API origin: scheme, hostname,
+and port. Do not add `/docs`, `/upcoming`, or another path.
 
-Deploy the bot. Its logs should show `Synced 4 slash commands` and
-`Sport Reporter is online as ...`. The bot does not require the backend to be
-available at login; API commands show an error until the backend is ready.
+Internal HTTP stays within Railway's private network. Use HTTPS for external
+access. See [private networking guidance](https://docs.railway.com/overview/best-practices).
 
-Never add `DATABASE_URL` to the bot. The API owns database access and the bot
-receives only the read API's bearer key.
+3. Deploy the bot.
+4. Check its logs for `Synced 4 slash commands` and `Sport Reporter is online as ...`.
 
-## 13. Verify from Discord
+The bot can connect to Discord before the backend is ready. API commands return
+an error until the backend is available. The bot receives only the API key for
+read access. Never add `DATABASE_URL` to the bot.
 
-In a channel where the bot can read/send messages and embed links:
+## 13. Check the bot in Discord
 
-```text
-/ping
-/sample
-/upcoming hours:24
-/upcoming hours:24 leagues:lck
-/results hours:24
-```
+1. Open a channel where the bot has View Channels, Send Messages, and Embed Links permissions.
+2. Send these commands one at a time:
 
-`/ping` tests the bot's Discord connection. `/sample` creates a fictional embed
-locally, so it does not test the backend. `/upcoming` and `/results` verify the
-complete path through the API to PostgreSQL. These API command replies are
-private to the invoking user and show at most ten embeds per response.
+   ```text
+   /ping
+   /sample
+   /upcoming hours:24
+   /upcoming hours:24 leagues:lck
+   /results hours:24
+   ```
 
-Demo timestamps were created when you first seeded the database. After the demo
-start times pass, `/upcoming` correctly returns no matches. This is not data loss.
-Refresh the demonstration timestamps using the optional SSH procedure below.
+`/ping` checks the Discord connection. `/sample` creates a fictional embed
+locally. It does not check the backend. `/upcoming` and `/results` check the
+connection through the API to PostgreSQL. Their replies are private to the user
+who sends the command. Each response contains a maximum of ten embeds.
 
-Disconnect your computer from the internet or close your local terminals and
-repeat `/ping` and `/results` from Discord on your phone. The hosted bot continues
-running independently of your computer.
+The first demo insertion sets the timestamps. After the start times pass,
+`/upcoming` returns no demo matches. The records remain in the database. Use the
+optional SSH procedure in section 14 to move the demo timestamps.
 
-## 14. Optional: run database maintenance through Railway SSH
+3. Disconnect your computer from the internet or close its local terminals.
+4. Send `/ping` and `/results` from Discord on your phone.
 
-Install the Railway CLI using its [official CLI instructions](https://docs.railway.com/cli).
-For a computer that already has Node.js/npm:
+The hosted bot continues to run independently of your computer.
+
+## 14. Run database maintenance through Railway SSH, optional
+
+Use the [Railway CLI installation instructions](https://docs.railway.com/cli).
+If Node.js and npm are already installed, use these commands:
 
 ```powershell
 npm install -g @railway/cli
@@ -382,70 +416,100 @@ railway login
 railway link
 ```
 
-During `link`, select the correct project and environment. Then:
+1. During `railway link`, select the correct project and environment.
+2. To apply pending migrations, run:
 
-```powershell
-railway ssh --service backend -- python -m app.db migrate
-railway ssh --service backend -- python -m app.db seed-demo --refresh
-```
+   ```powershell
+   railway ssh --service backend -- python -m app.db migrate
+   ```
 
-The second command intentionally moves only the three known demo IDs' timestamps
-to the current demonstration window. It does not update rows with `is_demo=false`.
-Do not run it as a scheduled task or confuse it with live data collection.
+3. To move demo timestamps to the current demo period, run:
 
-The first SSH connection may ask you to register your SSH key. Alternatively,
-right-click the backend service in Railway and use **Copy SSH Command**, open its
-shell, and run `python -m app.db ...` there.
+   ```powershell
+   railway ssh --service backend -- python -m app.db seed-demo --refresh
+   ```
+
+The refresh command affects only the three known demo IDs. It does not update
+records with `is_demo=false`. It also inserts a known demo record if that record
+is missing. Do not schedule this command. It does not collect live data.
+
+The first SSH connection can require SSH key registration. As an alternative:
+
+1. Open the backend service's context menu in Railway.
+2. Select **Copy SSH Command**.
+3. Use the copied command to open a shell.
+4. Run the required `python -m app.db ...` command in that shell.
+
 See [Railway SSH](https://docs.railway.com/cli/ssh).
 
-Do not use `railway run` on your PC expecting it to join Railway's private
-network: it runs locally with supplied environment variables. The private
-`*.railway.internal` database hostname is for deployed services.
+`railway run` executes locally with supplied environment variables. It does not
+connect your computer to Railway's private network. Private
+`*.railway.internal` database hostnames are for deployed services.
 
-## 15. Backups, persistence, updates, and recovery
+## 15. Configure backups and recovery
 
-1. Open the PostgreSQL service/volume's **Backups** settings and enable scheduled
-   backups. The exact tab placement may vary. Create a manual backup before a
-   schema change. Check the additional storage cost.
-2. If you need recovery between snapshots, enable PostgreSQL **point-in-time
-   recovery** following Railway's current database settings. This is an explicit
-   configuration step, not something the app migration enables.
-3. Test a restore into a separate database/service before you need it. Verify row
-   counts and a known match using that restored database before switching the
-   backend's `DATABASE_URL`. Keep an independent export for recovery elsewhere.
-4. Verify persistence: note a match ID and timestamp in `Postgres → Data`,
-   redeploy `backend`, and confirm the same values remain. Redeploying the app
-   does not delete the database volume.
-5. For updates, commit and push the intended branch; Railway can redeploy the
-   affected services. Check migration logs, `/ready`, `/ping`, and API commands.
-6. Add each future schema change as a **new numbered `.sql` file**. Do not edit
-   an already applied migration. The runner tracks filenames and applies pending
-   files in order. Use backward-compatible changes when old/new app versions
-   might briefly run together.
-7. Rolling back an app deployment does not undo its database migrations. Back up
-   before destructive changes and plan a database-compatible rollback.
+1. Open the PostgreSQL service or volume's **Backups** settings.
+2. Enable scheduled backups.
+3. Check the additional storage cost.
+4. Before a schema change, create a manual backup.
+5. If you need recovery between snapshots, enable PostgreSQL **point-in-time recovery**.
+6. Test a restore into a separate database or service.
+7. Check record counts and a known match in the restored database.
+8. After these checks pass, change the backend's `DATABASE_URL` if required.
+9. Keep an independent database export for recovery on another host.
 
-Reference: [volume backups](https://docs.railway.com/volumes/backups),
+The location of backup settings can change. Application migrations do not enable
+backups or point-in-time recovery. Use Railway's current settings. See
+[volume backups](https://docs.railway.com/volumes/backups),
 [point-in-time recovery](https://docs.railway.com/volumes/point-in-time-recovery),
-[database responsibilities](https://docs.railway.com/databases).
+and [database responsibilities](https://docs.railway.com/databases).
 
-## 16. Local development and tests, optional
+To check persistence:
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/). The backend
-supports Python 3.11+; its Docker image uses 3.13. The bot retains the repository's
-Python 3.15 requirement. `uv` can install the required Python versions.
+1. Record a match ID and timestamp from **Postgres > Data**.
+2. Deploy `backend` again.
+3. Make sure that the match ID and timestamp have not changed.
 
-For a local database, install PostgreSQL or start Docker Desktop and run:
+An application deployment does not delete the database volume.
+
+To update the application:
+
+1. Commit the intended changes to the deployment branch.
+2. Push the branch to GitHub.
+3. Check Railway's deployments for the affected services.
+4. Check migration logs, `/ready`, `/ping`, and the API commands.
+
+For each schema change, add a new numbered `.sql` file. Do not change an applied
+migration. The migration runner records filenames and applies new files in
+order. Use compatible schema changes when old and new application versions can
+run at the same time.
+
+An application rollback does not reverse database migrations. Before a change
+that deletes or alters data, make a backup. Plan a rollback that works with the
+resulting database schema.
+
+## 16. Run locally and test, optional
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) before you
+start. The backend supports Python 3.11 or later. Its Docker image uses Python
+3.13. The bot requires Python 3.15 or later. `uv` can install these Python versions.
+
+### Start local PostgreSQL
+
+Use an installed PostgreSQL server, or start Docker Desktop and run:
 
 ```powershell
 docker run --name sport-reporter-postgres -e POSTGRES_USER=sport -e POSTGRES_PASSWORD=local-dev-only -e POSTGRES_DB=sport_reporter -p 127.0.0.1:5432:5432 -v sport-reporter-pgdata:/var/lib/postgresql/data -d postgres:17
 ```
 
-This binds PostgreSQL to localhost and keeps its data in a named Docker volume.
-On later sessions, use `docker start sport-reporter-postgres`, not another
-`docker run` with the same name. Wait until its logs say it is ready for connections.
+This command binds PostgreSQL to localhost. A named Docker volume stores the
+data. For later sessions, use `docker start sport-reporter-postgres`. Do not
+repeat `docker run` with the same container name. Wait until the logs show that
+PostgreSQL is ready for connections.
 
-Backend terminal, from the repository root:
+### Start the backend
+
+Run these commands in a terminal at the repository root:
 
 ```powershell
 Set-Location backend
@@ -456,68 +520,85 @@ uv run --python 3.13 python -m app.db migrate --seed-demo
 uv run --python 3.13 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-The backend reads process environment variables; it does not automatically load
-`.env`. Do not use `--reload` on Railway. Local memory-only mode is still available
-by leaving `DATABASE_URL` unset; Railway refuses that fallback.
+The backend reads process environment variables. It does not load `.env`. For
+local demo data in memory, leave `DATABASE_URL` unset and omit the migration
+command. Railway requires PostgreSQL. Do not use `--reload` on Railway.
 
-Bot terminal, from the repository root:
+### Start the bot
+
+Run these commands in a separate terminal at the repository root:
 
 ```powershell
 Set-Location dc_bot
 uv sync --locked --extra dev
-# Create .env only if it does not already exist; preserve any existing token.
+# Create .env only if the file does not exist.
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 notepad .env
 uv run python bot.py
 ```
 
-Set the bot's `.env` to your token/server ID, `BACKEND_URL=http://127.0.0.1:8000`,
-and `SPORT_REPORTER_API_KEY=local-test-key-change-before-hosting`. Stop the Railway
-bot first or use a separate development bot token.
+Before you run `bot.py`, save these values in `.env`:
 
-Run tests from each service's directory:
+- Your bot token and test server ID.
+- `BACKEND_URL=http://127.0.0.1:8000`.
+- `SPORT_REPORTER_API_KEY=local-test-key-change-before-hosting`.
+
+Stop the Railway bot before you start a local bot with the same token. To keep
+the hosted bot running, use a separate development bot token.
+
+### Run tests
+
+From the `backend` directory, with local PostgreSQL running:
 
 ```powershell
-# backend terminal, with local PostgreSQL already running
 $env:TEST_DATABASE_URL = 'postgresql://sport:local-dev-only@127.0.0.1:5432/sport_reporter'
 uv run --python 3.13 pytest -q
 ```
 
+From the `dc_bot` directory:
+
 ```powershell
-# dc_bot terminal
 uv run pytest -q
 ```
 
-Database tests use a unique temporary schema and remove only that schema. Without
-`TEST_DATABASE_URL`, the real PostgreSQL tests are skipped. Test the migration and
-query path with a disposable local database before production deployment.
+Database tests create a unique temporary schema. They remove only that schema
+after the test. Without `TEST_DATABASE_URL`, PostgreSQL integration tests do not
+run. Before production deployment, check migrations and queries with a disposable
+local database.
 
 ## 17. Troubleshooting
 
-| Symptom | Check |
+| Problem | Action |
 | --- | --- |
-| Root Dockerfile/build not found | Set `/backend` or `/dc_bot` as that service's Root Directory, on the correct branch |
-| Lockfile out of date | Run `uv lock` in the changed service, commit its `uv.lock`, then redeploy |
-| API startup says `DATABASE_URL` missing | Add `${{Postgres.DATABASE_URL}}` to the backend; apply pending changes |
-| Migration times out | Database running, same environment, correct private URL, correct region/network |
-| `relation matches does not exist` | Set backend pre-deploy command to `python -m app.db migrate` and redeploy |
-| Backend healthcheck fails | `PORT=8000`, healthcheck `/ready`, successful migration, correct database variables |
-| HTTP 401 | Bot and backend must use the identical API key; use the reference variable and redeploy |
-| Bot rejects its token | Use the Discord Bot token, without `Bot ` prefix, spaces or extra quotes |
-| Slash commands absent | Bot invited with `applications.commands`, correct server ID, sync succeeded, Discord role allows commands |
-| Global commands slow to appear | Use your test `DISCORD_GUILD_ID` initially; global commands propagate separately |
-| Duplicate commands after switching guild/global | Old command registrations can remain; keep the development guild setting consistent and deliberately clean the old scope |
-| `/sample` works, API commands fail | `/sample` is local; check `BACKEND_URL`, bearer key, and backend `/ready` |
-| `/upcoming` returns no demo matches | Original demo start times may have passed; refresh them deliberately with the SSH command |
-| Data disappears on restart | `/ready` must report `postgresql`; inspect PostgreSQL's persistent volume and actual connection target |
-| Bot offline | Inspect crashes/logs, token, account usage limit, and sleeping setting; the bot needs no public domain |
-| Hobby deployment cannot start | Check Railway status for the current plan-specific deployment restrictions |
+| Dockerfile or build source missing | Check the branch and Root Directory: `/backend` or `/dc_bot` |
+| Lockfile out of date | Run `uv lock` in the affected service. Commit `uv.lock`. Deploy again |
+| API reports missing `DATABASE_URL` | Add `${{Postgres.DATABASE_URL}}` to the backend. Apply pending changes |
+| Migration timeout | Check database status, environment, private URL, region, and network |
+| `relation matches does not exist` | Set the backend pre-deploy command to `python -m app.db migrate`. Deploy again |
+| Backend healthcheck failure | Check `PORT=8000`, `/ready`, migration logs, and database variables |
+| HTTP 401 | Use the same API key on both services. Check the reference variable. Deploy again |
+| Bot token rejected | Use the Discord Bot token without a `Bot ` prefix, spaces, or extra quotes |
+| Slash commands missing | Check the installation scope `applications.commands`, server ID, registration logs, and command permissions |
+| Global commands appear slowly | Use the test server's `DISCORD_GUILD_ID` during development |
+| Duplicate server and global commands | Keep the development server setting consistent. Remove registrations from the old scope |
+| `/sample` works but API commands fail | Check `BACKEND_URL`, the API key, and backend `/ready` |
+| No upcoming demo matches | Check whether demo start times have passed. Use section 14 to move their timestamps |
+| Data missing after restart | Check that `/ready` reports `postgresql`. Inspect the database volume and connection target |
+| Bot offline | Check logs, crashes, token, account usage limit, and app sleeping |
+| Railway deployment unavailable | Check Railway status for restrictions that affect your plan |
 
-## 18. What to build after deployment
+## 18. Plan the next features
 
-You now have persistent match storage, a protected read API, and a bot that queries
-it on demand. A complete sports notification product additionally needs a sports
-data provider, an idempotent extraction/upsert worker, subscription/channel
-preferences, and a persistent notification log with retry/deduplication rules.
-Those features should be added explicitly; hosting alone does not fetch real
-matches or send scheduled alerts.
+After deployment, the application provides persistent match storage, a protected
+read API, and a bot that responds to commands.
+
+A complete sports notification system also needs:
+
+- A sports data provider.
+- An extractor that inserts new records and updates existing records without duplicates.
+- Subscription and channel preferences.
+- A persistent notification log.
+- Retry rules and duplicate checks for notifications.
+
+These features require development. Hosting the current application does not
+collect real matches or send scheduled alerts.
